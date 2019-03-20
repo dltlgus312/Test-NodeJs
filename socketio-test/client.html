@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+
+<script>
+
+
+	var socket = io();
+
+	// 서버에서 전송된 new connction 이벤트를 처리한다.
+	socket.on( 'new connection', ( data ) => {
+		console.log( data );	
+		$("#messages").append( data + "<br/>");
+	});
+
+	socket.on( 'user chat', ( data ) => {
+		console.log(data);
+		$("#messages").append( data + "<br/>");
+	});
+
+	function send(){		
+		//서버에 user chat 이벤트를 보낸다.
+		var msg = $("#m").val();
+		$("#m").val('');
+		console.log(msg);
+		socket.emit( 'user chat', msg );
+	}
+
+</script>
+
+<style>
+	* { margin: 0; padding: 0; box-sizing: border-box; }
+	body { font: 13px Helvetica, Arial; }
+	#form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+	#form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+	#form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+	#messages { width:100%; height:100%; }
+	#messages { list-style-type: none; margin: 0; padding: 0; }
+	#messages li { padding: 5px 10px; }
+	#messages li:nth-child(odd) { background: #eee; }
+</style>
+
+<title>Socket.IO chat</title>
+</head>
+
+<body>
+	<div id="messages"></div>
+	
+	<div id='form'>
+		<input type="text" id="m"/>
+		<button onclick="send()">Send</button>
+	</div>
+</body>
+</html>

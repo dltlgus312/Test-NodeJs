@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+	video {width:50%;height:auto;float:left;}
+</style>
+
+<script>
+
+	var pc;
+	var socket = io();
+	var configuration = {
+		'iceServers' : [ { 'urls' : 'stun:stun.example.org' } ]
+	};
+	
+	
+	function localDescCreated(desc) {
+		pc.setLocalDescription(desc, function () {
+			socket.emit( 'sdp', JSON.stringify( { 'sdp': pc.localDescription } ) );
+		}, logError);
+	}
+	
+	function logError(error) {
+		console.log(error.name + ': ' + error.message);
+	}
+	
+	
+	function InitConfig() {
+
+		pc = new RTCPeerConnection(configuration);
+		
+		// 클라이언트와 연결을 협상 할 때
+		pc.onnegotiationneeded = function () {
+			console.log("Client connection negotiation");
+			pc.createOffer(localDescCreated, logError);
+		}
+
+
+		// 다른 Peer에 ICE 전송
+		pc.onicecandidate = function (evt) {
+			if (evt.candidate) {
+				console.log("My Candidate Send");
+				socket.emit( 'candidate', JSON.stringify( { 'candidate' : evt.candidate } ) );
+			}
+		};
+
+
+		// 원격 스트림이 도착 할 때
+		pc.onaddstream = function (evt) {
+			console.log("Remote Stream Com");
+			var remotevideo = document.querySelector("#remotevideo");
+			remotevideo.srcObject = evt.stream;
+		};
+
+	}
+
+
+	function displayStart(){
+	
+		// 로컬 스트림 만들기
+		if(navigator.getDisplayMedia){
+			console.log("Local stream create");
+			navigator.getDisplayMedia().then((data) => {
+				var localvideo = document.querySelector("#localvideo");
+				localvideo.srcObject = data;
+				pc.addStream(data);
+			});
+		} else if  (navigator.mediaDevices.getDisplayMedia){
+			console.log("Local stream create");
+			navigator.mediaDevices.getDisplayMedia().then((data) => {
+				var localvideo = document.querySelector("#localvideo");
+				localvideo.srcObject = data;
+				pc.addStream(data);
+			});
+		}
+	
+	}
+
+
+
+	// socket.on('new', start);
+	socket.on('sdp', (data) => {
+		console.log('SOCKET sdp com');
+		var message = JSON.parse( data );
+		pc.setRemoteDescription( new RTCSessionDescription( message.sdp ), function(){
+			if (pc.remoteDescription.type == 'offer') pc.createAnswer(localDescCreated, logError);
+		}, logError);
+		
+	});
+
+	socket.on('candidate', (data) => {
+		console.log('SOCKET candidate com');
+		var message = JSON.parse(data);
+		pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+	});
+	
+</script>
+
+
+</head>
+<body>
+	<video autoplay id='localvideo'></video>
+	<video autoplay id='remotevideo'></video>
+	<button onclick="InitConfig()"> Initial setting </button>
+	<button onclick="displayStart()"> Display Start </button>
+</body>
+</html>
