@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+	video {width:50%;height:auto;float:left;}
+</style>
+
+<script>
+
+	var pc;
+	var socket = io();
+	var configuration = {
+		'iceServers' : [ 
+			{url:'stun:stun01.sipphone.com'},
+			{url:'stun:stun.ekiga.net'},
+			{url:'stun:stun.fwdnet.net'},
+			{url:'stun:stun.ideasip.com'},
+			{url:'stun:stun.iptel.org'},
+			{url:'stun:stun.rixtelecom.se'},
+			{url:'stun:stun.schlund.de'},
+			{url:'stun:stun.l.google.com:19302'},
+			{url:'stun:stun1.l.google.com:19302'},
+			{url:'stun:stun2.l.google.com:19302'},
+			{url:'stun:stun3.l.google.com:19302'},
+			{url:'stun:stun4.l.google.com:19302'},
+			{url:'stun:stunserver.org'},
+			{url:'stun:stun.softjoys.com'},
+			{url:'stun:stun.voiparound.com'},
+			{url:'stun:stun.voipbuster.com'},
+			{url:'stun:stun.voipstunt.com'},
+			{url:'stun:stun.voxgratia.org'},
+			{url:'stun:stun.xten.com'},
+			{
+				url: 'turn:numb.viagenie.ca',
+				credential: 'muazkh',
+				username: 'webrtc@live.com'
+			},
+			{
+				url: 'turn:192.158.29.39:3478?transport=udp',
+				credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+				username: '28224511:1379330808'
+			},
+			{
+				url: 'turn:192.158.29.39:3478?transport=tcp',
+				credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
+				username: '28224511:1379330808'
+			}
+		]
+	};
+	
+	
+	function localDescCreated(desc) {
+		pc.setLocalDescription(desc, function () {
+			socket.emit( 'sdp', JSON.stringify( { 'sdp': pc.localDescription } ) );
+		}, logError);
+	}
+	
+	function logError(error) {
+		console.log(error.name + ': ' + error.message);
+	}
+	
+	
+	function InitConfig() {
+
+		pc = new RTCPeerConnection(configuration);
+		
+		// 클라이언트와 연결을 협상 할 때
+		pc.onnegotiationneeded = function () {
+			console.log("Client connection negotiation");
+			pc.createOffer(localDescCreated, logError);
+		}
+
+
+		// 다른 Peer에 ICE 전송
+		pc.onicecandidate = function (evt) {
+			if (evt.candidate) {
+				console.log("My Candidate Send");
+				socket.emit( 'candidate', JSON.stringify( { 'candidate' : evt.candidate } ) );
+			}
+		};
+
+
+		// 원격 스트림이 도착 할 때
+		pc.onaddstream = function (evt) {
+			console.log("Remote Stream Com");
+			var remotevideo = document.querySelector("#remotevideo");
+			remotevideo.srcObject = evt.stream;
+		};
+
+	}
+
+
+	function displayStart(){
+	
+		// 로컬 스트림 만들기
+		if(navigator.getDisplayMedia){
+			console.log("Local stream create");
+			navigator.getDisplayMedia().then((data) => {
+				var localvideo = document.querySelector("#localvideo");
+				localvideo.srcObject = data;
+				pc.addStream(data);
+			});
+		} else if  (navigator.mediaDevices.getDisplayMedia){
+			console.log("Local stream create");
+			navigator.mediaDevices.getDisplayMedia().then((data) => {
+				var localvideo = document.querySelector("#localvideo");
+				localvideo.srcObject = data;
+				pc.addStream(data);
+			});
+		}
+	
+	}
+
+
+
+	// socket.on('new', start);
+	socket.on('sdp', (data) => {
+		console.log('SOCKET sdp com');
+		var message = JSON.parse( data );
+		pc.setRemoteDescription( new RTCSessionDescription( message.sdp ), function(){
+			if (pc.remoteDescription.type == 'offer') pc.createAnswer(localDescCreated, logError);
+		}, logError);
+		
+	});
+
+	socket.on('candidate', (data) => {
+		console.log('SOCKET candidate com');
+		var message = JSON.parse(data);
+		pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+	});
+	
+</script>
+
+
+</head>
+<body>
+	<video autoplay id='localvideo'></video>
+	<video autoplay id='remotevideo'></video>
+	<button onclick="InitConfig()"> Initial setting </button>
+	<button onclick="displayStart()"> Display Start </button>
+</body>
+</html>
