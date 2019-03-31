@@ -1,4 +1,0 @@
-cmd  해당 폴더이동
-npm init --yes
-npm install express --save
-npm install socket.io --save

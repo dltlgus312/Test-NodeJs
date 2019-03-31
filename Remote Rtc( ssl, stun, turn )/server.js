@@ -29,7 +29,8 @@ io.on( 'connection', ( socket ) => {
 
 	// 이벤트 받기
 	socket.on('sdp', ( data ) => {
-		console.log( 'sdp');	
+		
+		console.log( socket);	
 		socket.broadcast.emit( 'sdp', data );
 	});
 

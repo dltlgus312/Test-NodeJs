@@ -4,7 +4,7 @@ var io = require( 'socket.io' )( http );
 
 
 http.listen(3000, ( ) => {
-	console.log("http open");
+	console.log("https open");
 });
 
 // URL Æ÷¿öµù
